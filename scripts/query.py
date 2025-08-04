@@ -42,7 +42,7 @@ class RAGQueryEngine:
     def create_context_prompt(self, chunks: List[Dict], query: str) -> str:
         """Create a well-structured prompt with context"""
         if not chunks:
-            return f"Du är en hjälpsam assistent. Svara på följande fråga baserat på din kunskap:\n\nFråga: {query}"
+            return f"You are a helpful assistant. Answer the following question based on your knowledge:\n\nQuestion: {query}"
         
         # Build context from chunks
         context_parts = []
@@ -51,25 +51,28 @@ class RAGQueryEngine:
             score = chunk.get("score", 0)
             text = chunk.get("text", "")
             
-            context_parts.append(f"Källa {i} ({source}, relevans: {score:.3f}):\n{text}")
+            context_parts.append(f"Source {i} ({source}, relevance: {score:.3f}):\n{text}")
         
         context = "\n\n".join(context_parts)
         
-        prompt = f"""Du är en hjälpsam assistent. Svara endast baserat på följande information. Om informationen inte räcker för att svara, säg det tydligt.
+        # Create language instruction based on system language
+        language_instruction = f"Answer in {config.system_language}" if config.system_language != "en" else "Answer in English"
+        
+        prompt = f"""You are a helpful assistant. Answer only based on the following information. If the information is not sufficient to answer, say so clearly.
 
-KONTEXT:
+CONTEXT:
 {context}
 
-FRÅGA: {query}
+QUESTION: {query}
 
-INSTRUKTIONER:
-- Svara endast baserat på den givna kontexten
-- Om kontexten inte innehåller tillräcklig information, säg det
-- Var konkret och använd information från källorna
-- Citera relevanta delar från källorna när det är lämpligt
-- Svara på svenska om frågan är på svenska, annars på engelska
+INSTRUCTIONS:
+- Answer only based on the given context
+- If the context doesn't contain sufficient information, say so
+- Be specific and use information from the sources
+- Cite relevant parts from the sources when appropriate
+- {language_instruction}
 
-SVAR:"""
+ANSWER:"""
         
         return prompt
     
@@ -120,7 +123,7 @@ SVAR:"""
             logger.error(f"Query failed: {e}")
             return {
                 "question": question,
-                "answer": f"Ett fel uppstod: {str(e)}",
+                "answer": f"An error occurred: {str(e)}",
                 "error": str(e),
                 "sources": [],
                 "chunks_used": 0
@@ -131,20 +134,20 @@ SVAR:"""
         print("\n" + "="*60)
         print("RAG QUERY SYSTEM")
         print("="*60)
-        print("Skriv 'q' för att avsluta")
-        print("Skriv 'stats' för att se statistik")
-        print("Skriv 'help' för hjälp")
+        print("Type 'q' to quit")
+        print("Type 'stats' to see statistics")
+        print("Type 'help' for help")
         print("="*60)
         
         while True:
             try:
-                question = input("\nStäll en fråga: ").strip()
+                question = input("\nAsk a question: ").strip()
                 
                 if not question:
                     continue
                 
                 if question.lower() == 'q':
-                    print("Avslutar...")
+                    print("Exiting...")
                     break
                 
                 if question.lower() == 'stats':
@@ -160,50 +163,50 @@ SVAR:"""
                 
                 # Display result
                 print("\n" + "-"*40)
-                print("SVAR:")
+                print("ANSWER:")
                 print("-"*40)
                 print(result["answer"])
                 
                 if result["sources"]:
-                    print(f"\nKällor: {', '.join(set(result['sources']))}")
-                    print(f"Antal chunks använda: {result['chunks_used']}")
+                    print(f"\nSources: {', '.join(set(result['sources']))}")
+                    print(f"Chunks used: {result['chunks_used']}")
                 
                 print("-"*40)
                 
             except KeyboardInterrupt:
-                print("\nAvslutar...")
+                print("\nExiting...")
                 break
             except Exception as e:
                 logger.error(f"Error in interactive mode: {e}")
-                print(f"Ett fel uppstod: {e}")
+                print(f"An error occurred: {e}")
     
     def show_statistics(self):
         """Show system statistics"""
         try:
             stats = embedding_manager.get_collection_info()
             print("\n" + "="*40)
-            print("SYSTEM STATISTIK")
+            print("SYSTEM STATISTICS")
             print("="*40)
             print(f"Vector database: {stats['points_count']} chunks")
             print(f"Vector dimension: {stats['vector_size']}")
             print(f"Distance metric: {stats['distance']}")
             print("="*40)
         except Exception as e:
-            print(f"Kunde inte hämta statistik: {e}")
+            print(f"Could not retrieve statistics: {e}")
     
     def show_help(self):
         """Show help information"""
         print("\n" + "="*40)
-        print("HJÄLP")
+        print("HELP")
         print("="*40)
-        print("Kommandon:")
-        print("  q - Avsluta")
-        print("  stats - Visa systemstatistik")
-        print("  help - Visa denna hjälp")
+        print("Commands:")
+        print("  q - Quit")
+        print("  stats - Show system statistics")
+        print("  help - Show this help")
         print("\nTips:")
-        print("  - Ställ specifika frågor för bättre svar")
-        print("  - Systemet söker i dina dokument")
-        print("  - Svaret baseras endast på dokumenten")
+        print("  - Ask specific questions for better answers")
+        print("  - The system searches in your documents")
+        print("  - Answers are based only on the documents")
         print("="*40)
 
 def main():
@@ -221,11 +224,11 @@ def main():
         
     except Exception as e:
         logger.error(f"Query system failed: {e}")
-        print(f"Systemfel: {e}")
-        print("Kontrollera att:")
-        print("1. Qdrant är igång (docker compose up -d)")
-        print("2. LM Studio är igång med API-server aktiverad")
-        print("3. Dokument har bearbetats (python scripts/pipeline.py)")
+        print(f"System error: {e}")
+        print("Check that:")
+        print("1. Qdrant is running (docker compose up -d)")
+        print("2. LM Studio is running with API server enabled")
+        print("3. Documents have been processed (python scripts/pipeline.py)")
 
 if __name__ == "__main__":
     main()

@@ -28,6 +28,11 @@ class Config:
     temperature: float = 0.3
     max_tokens: int = 1000
     
+    # Language settings
+    ocr_languages: str = "eng+swe"  # Tesseract OCR languages
+    system_language: str = "sv"     # System language (sv, en, etc.)
+    fallback_language: str = "eng"  # Fallback language for OCR
+    
     # File processing
     data_dir: str = "data"
     supported_extensions: set = None

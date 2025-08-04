@@ -145,10 +145,3 @@ class EmbeddingManager:
 
 # Global instance
 embedding_manager = EmbeddingManager()
-
-# Backward compatibility functions
-def init_collection():
-    embedding_manager.init_collection()
-
-def insert_chunks(chunks, source_file):
-    embedding_manager.insert_chunks(chunks, source_file)

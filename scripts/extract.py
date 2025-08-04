@@ -37,7 +37,7 @@ def extract_text_from_pdf(path: str) -> str:
                     logger.info(f"Page {page_num + 1} has no text, attempting OCR...")
                     pix = page.get_pixmap()
                     img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                    ocr_text = pytesseract.image_to_string(img)
+                    ocr_text = pytesseract.image_to_string(img, lang=config.ocr_languages)
                     if ocr_text.strip():
                         text_parts.append(ocr_text)
             except Exception as e:
@@ -58,8 +58,11 @@ def extract_text_from_image(path: str) -> str:
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Try different OCR configurations
-        text = pytesseract.image_to_string(image, lang='eng+swe')
+        # Try configured OCR languages first
+        text = pytesseract.image_to_string(image, lang=config.ocr_languages)
+        if not text.strip():
+            # Try fallback language
+            text = pytesseract.image_to_string(image, lang=config.fallback_language)
         if not text.strip():
             # Try without language specification
             text = pytesseract.image_to_string(image)
@@ -135,7 +138,7 @@ def extract_text_from_txt(path: str) -> str:
 
 def extract_text(path: str) -> str:
     """
-    Main extraction function with improved file type detection and error handling.
+    Main extraction function with file type detection and error handling.
     
     Args:
         path: Path to the file to extract text from

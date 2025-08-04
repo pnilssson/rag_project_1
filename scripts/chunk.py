@@ -5,8 +5,6 @@ from scripts.utils import clean_text
 
 def chunk_text(text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
     """
-    Improved text chunking with semantic boundaries and better overlap handling.
-    
     Args:
         text: Input text to chunk
         chunk_size: Maximum chunk size in words
