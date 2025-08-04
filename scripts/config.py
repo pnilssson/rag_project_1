@@ -18,8 +18,8 @@ class Config:
     chunk_overlap: int = 50
     
     # Query settings
-    top_k: int = 5
-    similarity_threshold: float = 0.7
+    top_k: int = 10
+    similarity_threshold: float = 0.3
     
     # LLM settings
     llm_model: str = "qwen/qwen3-8b"

@@ -44,7 +44,7 @@ class RAGQueryEngine:
     def create_context_prompt(self, chunks: List[Dict], query: str) -> str:
         """Create a well-structured prompt with context"""
         if not chunks:
-            return f"You are a helpful assistant. Answer the following question based on your knowledge:\n\nQuestion: {query}"
+            return f"I'm sorry, but I couldn't find any relevant information in the provided documents to answer your question: '{query}'. Please try rephrasing your question or ask about a different topic that might be covered in the available documents."
         
         # Build context from chunks
         context_parts = []
@@ -74,8 +74,7 @@ INSTRUCTIONS:
 - Cite relevant parts from the sources when appropriate
 - {language_instruction}
 
-ANSWER:
-/no_think"""
+ANSWER:"""
         
         return prompt
     
@@ -86,7 +85,7 @@ ANSWER:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens
+                max_tokens=self.max_tokens,
             )
             
             return completion.choices[0].message.content
@@ -102,6 +101,16 @@ ANSWER:
             
             # Retrieve relevant chunks
             chunks = self.retrieve_relevant_chunks(question, top_k, score_threshold)
+            
+            # If no chunks found, return early without calling LLM
+            if not chunks:
+                return {
+                    "question": question,
+                    "answer": f"I'm sorry, but I couldn't find any relevant information in the provided documents to answer your question: '{question}'. Please try rephrasing your question or ask about a different topic that might be covered in the available documents.",
+                    "sources": [],
+                    "chunks_used": 0,
+                    "chunks": []
+                }
             
             # Create prompt
             prompt = self.create_context_prompt(chunks, question)
