@@ -11,11 +11,11 @@ from pathlib import Path
 # Add scripts directory to path
 sys.path.append(str(Path(__file__).parent))
 
-from scripts.pipeline import RAGPipeline
-from scripts.query import RAGQueryEngine
-from scripts.embeddings import embedding_manager
-from scripts.config import config
-from scripts.utils import setup_logging
+from pipeline import RAGPipeline
+from query import RAGQueryEngine
+from embeddings import embedding_manager
+from config import config
+from utils import setup_logging
 
 logger = setup_logging()
 
@@ -31,7 +31,7 @@ def process_command(args):
         folder_path = args.folder or config.data_dir
         summary = pipeline.process_folder(folder_path)
         
-        print(f"\n✅ Processing complete!")
+        print(f"\nProcessing complete!")
         print(f"Files processed: {summary['processed_files']}")
         print(f"Files failed: {summary['failed_files']}")
         print(f"Success rate: {summary['success_rate']:.2%}")
@@ -45,7 +45,7 @@ def process_command(args):
         
     except Exception as e:
         logger.error(f"Processing failed: {e}")
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return 1
 
 def query_command(args):
@@ -71,7 +71,7 @@ def query_command(args):
         
     except Exception as e:
         logger.error(f"Query failed: {e}")
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return 1
 
 def stats_command(args):
@@ -92,7 +92,7 @@ def stats_command(args):
         
     except Exception as e:
         logger.error(f"Failed to get statistics: {e}")
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return 1
 
 def reset_command(args):
@@ -104,13 +104,13 @@ def reset_command(args):
             return 0
         
         embedding_manager.delete_collection()
-        print("✅ Vector database reset successfully")
+        print("Vector database reset successfully")
         
         return 0
         
     except Exception as e:
         logger.error(f"Reset failed: {e}")
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return 1
 
 def main():

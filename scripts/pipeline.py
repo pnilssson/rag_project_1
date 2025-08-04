@@ -3,11 +3,11 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 
-from scripts.extract import extract_text
-from scripts.chunk import chunk_text
-from scripts.embeddings import embedding_manager
-from scripts.config import config
-from scripts.utils import setup_logging, is_supported_file, measure_time
+from extract import extract_text
+from chunk import chunk_text
+from embeddings import embedding_manager
+from config import config
+from utils import setup_logging, is_supported_file, measure_time
 
 logger = setup_logging()
 
@@ -16,6 +16,10 @@ class RAGPipeline:
         self.data_dir = config.data_dir
         self.processed_files = []
         self.failed_files = []
+        
+        # Initialize collection when pipeline is created
+        logger.info("Initializing vector database collection...")
+        embedding_manager.init_collection()
     
     def process_file(self, file_path: str) -> Dict[str, Any]:
         """Process a single file through the RAG pipeline"""
@@ -46,7 +50,7 @@ class RAGPipeline:
             }
             
             self.processed_files.append(result)
-            logger.info(f"✅ Successfully processed: {os.path.basename(file_path)}")
+            logger.info(f"Successfully processed: {os.path.basename(file_path)}")
             return result
             
         except Exception as e:
@@ -56,7 +60,7 @@ class RAGPipeline:
                 "error": str(e)
             }
             self.failed_files.append(error_result)
-            logger.error(f"❌ Error processing {file_path}: {e}")
+            logger.error(f"Error processing {file_path}: {e}")
             return error_result
     
     @measure_time
@@ -117,11 +121,7 @@ class RAGPipeline:
 def main():
     """Main pipeline execution"""
     try:
-        # Initialize collection
-        logger.info("Initializing vector database collection...")
-        embedding_manager.init_collection()
-        
-        # Create and run pipeline
+        # Create and run pipeline (collection is initialized in constructor)
         pipeline = RAGPipeline()
         summary = pipeline.process_folder()
         

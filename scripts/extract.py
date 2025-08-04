@@ -15,8 +15,8 @@ except ImportError:
     DOCX_AVAILABLE = False
     logging.warning("python-docx not installed. DOCX files will not be supported.")
 
-from scripts.config import config
-from scripts.utils import get_file_extension, is_supported_file, setup_logging
+from config import config
+from utils import get_file_extension, is_supported_file, setup_logging
 
 logger = setup_logging()
 

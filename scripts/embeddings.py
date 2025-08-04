@@ -6,8 +6,8 @@ import logging
 from typing import List, Dict, Any
 import numpy as np
 
-from scripts.config import config
-from scripts.utils import setup_logging, measure_time, batch_process
+from config import config
+from utils import setup_logging, measure_time, batch_process
 
 logger = setup_logging()
 
@@ -125,7 +125,7 @@ class EmbeddingManager:
         try:
             info = self.client.get_collection(self.collection_name)
             return {
-                "name": info.name,
+                "name": self.collection_name,
                 "vector_size": info.config.params.vectors.size,
                 "distance": info.config.params.vectors.distance,
                 "points_count": info.points_count

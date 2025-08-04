@@ -3,17 +3,19 @@ import logging
 from typing import List, Dict, Any, Optional
 import json
 
-from scripts.embeddings import embedding_manager
-from scripts.config import config
-from scripts.utils import setup_logging
+from embeddings import embedding_manager
+from config import config
+from utils import setup_logging
 
 logger = setup_logging()
 
 class RAGQueryEngine:
     def __init__(self):
         # Configure OpenAI client for LM Studio
-        openai.api_base = config.openai_api_base
-        openai.api_key = config.openai_api_key
+        self.client = openai.OpenAI(
+            api_key=config.openai_api_key,
+            base_url=config.openai_api_base
+        )
         
         self.model = config.llm_model
         self.temperature = config.temperature
@@ -72,22 +74,22 @@ INSTRUCTIONS:
 - Cite relevant parts from the sources when appropriate
 - {language_instruction}
 
-ANSWER:"""
+ANSWER:
+/no_think"""
         
         return prompt
     
     def ask_llm(self, prompt: str) -> str:
         """Send prompt to LLM and get response"""
         try:
-            response = openai.ChatCompletion.create(
+            completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                timeout=30
+                max_tokens=self.max_tokens
             )
             
-            return response.choices[0].message["content"]
+            return completion.choices[0].message.content
             
         except Exception as e:
             logger.error(f"Error calling LLM: {e}")

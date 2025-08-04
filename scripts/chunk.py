@@ -1,7 +1,7 @@
 import re
 from typing import List
-from scripts.config import config
-from scripts.utils import clean_text
+from config import config
+from utils import clean_text
 
 def chunk_text(text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
     """
