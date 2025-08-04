@@ -114,6 +114,7 @@ ANSWER:"""
             
             # Create prompt
             prompt = self.create_context_prompt(chunks, question)
+            logger.info(f"Generated prompt for LLM: {prompt}")
             
             # Get LLM response
             answer = self.ask_llm(prompt)
@@ -170,6 +171,7 @@ ANSWER:"""
                     continue
                 
                 # Process query
+                logger.info(f"User question in interactive mode: {question}")
                 result = self.query(question)
                 
                 # Display result
