@@ -18,7 +18,7 @@ class Config:
     chunk_overlap: int = 50
     
     # Query settings
-    top_k: int = 10
+    top_k: int = 5  # Reduced from 10 to prevent context overflow
     similarity_threshold: float = 0.3
     
     # LLM settings
@@ -27,6 +27,10 @@ class Config:
     openai_api_key: str = "sk-local"
     temperature: float = 0.3
     max_tokens: int = 1000
+    
+    # Context management settings
+    max_context_tokens: int = 3000  # Reserve space for prompt template and response
+    max_total_tokens: int = 4096    # Model's context window
     
     # Language settings
     ocr_languages: str = "eng+swe"  # Tesseract OCR languages

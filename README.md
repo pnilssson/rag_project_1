@@ -20,13 +20,20 @@ Access Qdrant dashboard at: http://localhost:6333/dashboard
    - Load your model (e.g., Qwen 3 8B)
    - Enable API server (Settings → API Server)
 
-4. **Process documents:**
-```bash
-python scripts/rag_cli.py process
-```
+4. **Choose your interface:**
 
-5. **Query the system:**
+### Web UI (Recommended)
 ```bash
+streamlit run app.py
+```
+Access the web interface at: http://localhost:8501
+
+### Command Line Interface
+```bash
+# Process documents
+python scripts/rag_cli.py process
+
+# Query the system
 python scripts/rag_cli.py query
 ```
 
@@ -73,3 +80,4 @@ python scripts/rag_cli.py reset
 - Docker
 - LM Studio
 - Tesseract OCR (for images)
+- Streamlit (for web UI)

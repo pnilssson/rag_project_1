@@ -2,6 +2,7 @@ import openai
 import logging
 from typing import List, Dict, Any, Optional
 import json
+import tiktoken
 
 from embeddings import embedding_manager
 from config import config
@@ -20,13 +21,86 @@ class RAGQueryEngine:
         self.model = config.llm_model
         self.temperature = config.temperature
         self.max_tokens = config.max_tokens
+        
+        # Context management settings
+        self.max_context_tokens = config.max_context_tokens
+        self.max_total_tokens = config.max_total_tokens
+        self.encoding = tiktoken.get_encoding("cl100k_base")  # Default encoding for most models
+    
+    def count_tokens(self, text: str) -> int:
+        """Count tokens in text using tiktoken"""
+        try:
+            return len(self.encoding.encode(text))
+        except Exception as e:
+            logger.warning(f"Error counting tokens, using word-based estimation: {e}")
+            # Fallback: rough estimation (1 token ≈ 4 characters)
+            return len(text) // 4
+    
+    def truncate_chunks_to_fit_context(self, chunks: List[Dict], max_tokens: int) -> List[Dict]:
+        """Truncate chunks to fit within token limit"""
+        if not chunks:
+            return []
+        
+        # Start with the highest scoring chunks
+        sorted_chunks = sorted(chunks, key=lambda x: x.get('score', 0), reverse=True)
+        
+        selected_chunks = []
+        current_tokens = 0
+        
+        for chunk in sorted_chunks:
+            chunk_text = chunk.get('text', '')
+            chunk_tokens = self.count_tokens(chunk_text)
+            
+            # Check if adding this chunk would exceed the limit
+            if current_tokens + chunk_tokens <= max_tokens:
+                selected_chunks.append(chunk)
+                current_tokens += chunk_tokens
+            else:
+                # Try to truncate the chunk to fit
+                if chunk_tokens > 100:  # Only truncate if chunk is substantial
+                    # Truncate chunk to fit remaining space
+                    remaining_tokens = max_tokens - current_tokens
+                    if remaining_tokens > 50:  # Only add if we have meaningful space
+                        truncated_text = self.truncate_text_to_tokens(chunk_text, remaining_tokens)
+                        truncated_chunk = chunk.copy()
+                        truncated_chunk['text'] = truncated_text
+                        truncated_chunk['truncated'] = True
+                        selected_chunks.append(truncated_chunk)
+                break
+        
+        logger.info(f"Selected {len(selected_chunks)} chunks, total tokens: {current_tokens}")
+        return selected_chunks
+    
+    def truncate_text_to_tokens(self, text: str, max_tokens: int) -> str:
+        """Truncate text to fit within token limit"""
+        try:
+            tokens = self.encoding.encode(text)
+            if len(tokens) <= max_tokens:
+                return text
+            
+            # Truncate and decode back to text
+            truncated_tokens = tokens[:max_tokens]
+            truncated_text = self.encoding.decode(truncated_tokens)
+            
+            # Add ellipsis to indicate truncation
+            if truncated_text != text:
+                truncated_text += "..."
+            
+            return truncated_text
+        except Exception as e:
+            logger.warning(f"Error truncating text, using character-based truncation: {e}")
+            # Fallback: character-based truncation
+            return text[:max_tokens * 4] + "..." if len(text) > max_tokens * 4 else text
     
     def retrieve_relevant_chunks(self, query: str, top_k: int = None, score_threshold: float = None) -> List[Dict]:
         """Retrieve relevant chunks using semantic search"""
         try:
+            # Start with a conservative number of chunks
+            initial_top_k = min(top_k or config.top_k, 5)
+            
             results = embedding_manager.search_similar(
                 query, 
-                top_k=top_k or config.top_k,
+                top_k=initial_top_k,
                 score_threshold=score_threshold or config.similarity_threshold
             )
             
@@ -34,8 +108,11 @@ class RAGQueryEngine:
                 logger.warning("No relevant chunks found for query")
                 return []
             
-            logger.info(f"Retrieved {len(results)} relevant chunks")
-            return results
+            # Truncate chunks to fit within context limit
+            truncated_results = self.truncate_chunks_to_fit_context(results, self.max_context_tokens)
+            
+            logger.info(f"Retrieved {len(results)} chunks, using {len(truncated_results)} after truncation")
+            return truncated_results
             
         except Exception as e:
             logger.error(f"Error retrieving chunks: {e}")
@@ -52,8 +129,10 @@ class RAGQueryEngine:
             source = chunk.get("source", "Unknown")
             score = chunk.get("score", 0)
             text = chunk.get("text", "")
+            truncated = chunk.get("truncated", False)
             
-            context_parts.append(f"Source {i} ({source}, relevance: {score:.3f}):\n{text}")
+            truncation_note = " (truncated)" if truncated else ""
+            context_parts.append(f"Source {i} ({source}, relevance: {score:.3f}){truncation_note}:\n{text}")
         
         context = "\n\n".join(context_parts)
         
@@ -81,11 +160,24 @@ ANSWER:"""
     def ask_llm(self, prompt: str) -> str:
         """Send prompt to LLM and get response"""
         try:
+            # Count tokens in prompt
+            prompt_tokens = self.count_tokens(prompt)
+            logger.info(f"Prompt tokens: {prompt_tokens}")
+            
+            # Adjust max_tokens to ensure we don't exceed context limit
+            available_tokens = self.max_total_tokens - prompt_tokens
+            adjusted_max_tokens = min(self.max_tokens, available_tokens - 100)  # Reserve 100 tokens for safety
+            
+            if adjusted_max_tokens < 100:
+                raise ValueError(f"Prompt too long ({prompt_tokens} tokens). Available tokens for response: {available_tokens}")
+            
+            logger.info(f"Using max_tokens: {adjusted_max_tokens}")
+            
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens,
+                max_tokens=adjusted_max_tokens,
             )
             
             return completion.choices[0].message.content
@@ -95,7 +187,7 @@ ANSWER:"""
             raise
     
     def query(self, question: str, top_k: int = None, score_threshold: float = None) -> Dict[str, Any]:
-        """Complete RAG query process"""
+        """Complete RAG query process with improved context management"""
         try:
             logger.info(f"Processing query: {question}")
             
@@ -114,7 +206,13 @@ ANSWER:"""
             
             # Create prompt
             prompt = self.create_context_prompt(chunks, question)
-            logger.info(f"Generated prompt for LLM: {prompt}")
+            
+            # Log the complete prompt for debugging
+            logger.info("=" * 80)
+            logger.info("COMPLETE PROMPT SENT TO LLM:")
+            logger.info("=" * 80)
+            logger.info(prompt)
+            logger.info("=" * 80)
             
             # Get LLM response
             answer = self.ask_llm(prompt)
@@ -125,7 +223,13 @@ ANSWER:"""
                 "answer": answer,
                 "sources": [chunk.get("source") for chunk in chunks],
                 "chunks_used": len(chunks),
-                "chunks": chunks
+                "chunks": chunks,
+                "prompt_tokens": self.count_tokens(prompt),
+                "context_management": {
+                    "max_context_tokens": self.max_context_tokens,
+                    "max_total_tokens": self.max_total_tokens,
+                    "truncated_chunks": sum(1 for chunk in chunks if chunk.get("truncated", False))
+                }
             }
             
             logger.info(f"Query completed successfully")
@@ -133,10 +237,16 @@ ANSWER:"""
             
         except Exception as e:
             logger.error(f"Query failed: {e}")
+            error_msg = str(e)
+            
+            # Provide more helpful error messages
+            if "context length" in error_msg.lower() or "tokens" in error_msg.lower():
+                error_msg = f"Context too long for the model. The retrieved documents exceed the model's context window. Try reducing the number of results or using more specific queries."
+            
             return {
                 "question": question,
-                "answer": f"An error occurred: {str(e)}",
-                "error": str(e),
+                "answer": f"An error occurred: {error_msg}",
+                "error": error_msg,
                 "sources": [],
                 "chunks_used": 0
             }
