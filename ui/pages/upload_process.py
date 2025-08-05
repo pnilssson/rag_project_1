@@ -62,17 +62,26 @@ def upload_and_process_page():
                         for i, file_info in enumerate(temp_files):
                             original_name = file_info['original_name']
                             file_path = file_info['file_path']
-                            status_text.text(f"Processing {original_name}...")
+                            file_type = file_info['file_type']
+                            status_text.text(f"Processing {original_name} ({file_type})...")
                             
                             try:
                                 result = pipeline.process_file(file_path, source_name=original_name)
                                 results.append(result)
+                                
+                                # Show chunking info for successful processing
+                                if result["status"] == "success":
+                                    st.success(f"✅ {original_name}: {result['chunks_count']} chunks created")
+                                else:
+                                    st.warning(f"⚠️ {original_name}: {result['status']}")
+                                    
                             except Exception as e:
                                 results.append({
                                     "status": "error",
                                     "file": original_name,
                                     "error": str(e)
                                 })
+                                st.error(f"❌ {original_name}: {str(e)}")
                             
                             progress_bar.progress((i + 1) / len(temp_files))
                         

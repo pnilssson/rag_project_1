@@ -20,32 +20,57 @@ from utils import setup_logging
 logger = setup_logging()
 
 def process_command(args):
-    """Process documents and build vector database"""
+    """Process documents and build vector database using LangChain chunking"""
     try:
+        print("🤖 RAG System with LangChain Chunking")
+        print("=" * 50)
+        print(f"Chunking Strategy: RecursiveCharacterTextSplitter")
+        print(f"Chunk Size: {config.chunk_size} words")
+        print(f"Chunk Overlap: {config.chunk_overlap} words")
+        print("=" * 50)
+        
         pipeline = RAGPipeline()
         
         if args.recreate:
             logger.info("Recreating vector database collection...")
+            print("🗑️  Recreating vector database collection...")
             embedding_manager.init_collection(recreate=True)
+            print("✅ Collection recreated!")
         
         folder_path = args.folder or config.data_dir
+        print(f"📁 Processing folder: {folder_path}")
+        
         summary = pipeline.process_folder(folder_path)
         
-        print(f"\nProcessing complete!")
-        print(f"Files processed: {summary['processed_files']}")
-        print(f"Files failed: {summary['failed_files']}")
-        print(f"Success rate: {summary['success_rate']:.2%}")
+        print(f"\n" + "="*50)
+        print("📊 PROCESSING SUMMARY")
+        print("="*50)
+        print(f"Total files: {summary['total_files']}")
+        print(f"✅ Successfully processed: {summary['processed_files']}")
+        print(f"❌ Failed: {summary['failed_files']}")
+        print(f"📈 Success rate: {summary['success_rate']:.2%}")
+        
+        # Show chunking details for successful files
+        if summary['processed']:
+            print(f"\n📄 Chunking Details:")
+            total_chunks = 0
+            for result in summary['processed']:
+                chunks = result.get('chunks_count', 0)
+                total_chunks += chunks
+                print(f"  • {result['file']}: {chunks} chunks")
+            print(f"  📊 Total chunks created: {total_chunks}")
         
         if summary['failed_files'] > 0:
-            print("\nFailed files:")
+            print(f"\n❌ Failed files:")
             for failed in summary['failed']:
-                print(f"  - {failed['file']}: {failed['error']}")
+                print(f"  • {failed['file']}: {failed['error']}")
         
+        print("="*50)
         return 0
         
     except Exception as e:
         logger.error(f"Processing failed: {e}")
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         return 1
 
 def query_command(args):
@@ -75,47 +100,70 @@ def query_command(args):
         return 1
 
 def stats_command(args):
-    """Show system statistics"""
+    """Show system statistics with LangChain chunking info"""
     try:
         stats = embedding_manager.get_collection_info()
         
         print("\n" + "="*50)
-        print("RAG SYSTEM STATISTICS")
+        print("🤖 RAG SYSTEM STATISTICS")
         print("="*50)
-        print(f"Collection: {stats['name']}")
-        print(f"Total chunks: {stats['points_count']}")
-        print(f"Vector dimension: {stats['vector_size']}")
-        print(f"Distance metric: {stats['distance']}")
-        print("="*50)
+        print(f"📊 Collection: {stats['name']}")
+        print(f"📄 Total chunks: {stats['points_count']}")
+        print(f"🔢 Vector dimension: {stats['vector_size']}")
+        print(f"📏 Distance metric: {stats['distance']}")
         
+        # Show chunking configuration
+        print(f"\n🔧 Chunking Configuration:")
+        print(f"  • Strategy: RecursiveCharacterTextSplitter")
+        print(f"  • Chunk size: {config.chunk_size} words")
+        print(f"  • Chunk overlap: {config.chunk_overlap} words")
+        print(f"  • Supported formats: PDF, TXT, PNG, JPG, XML, DOCX, MD")
+        
+        # Show document loaders info
+        print(f"\n📚 Document Loaders:")
+        print(f"  • PDF: PyMuPDFLoader")
+        print(f"  • Word: UnstructuredWordDocumentLoader")
+        print(f"  • Images: UnstructuredImageLoader")
+        print(f"  • Text/Markdown: TextLoader")
+        print(f"  • XML: TextLoader")
+        
+        print("="*50)
         return 0
         
     except Exception as e:
         logger.error(f"Failed to get statistics: {e}")
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         return 1
 
 def reset_command(args):
     """Reset the vector database"""
     try:
+        print("🗑️  Reset Vector Database")
+        print("=" * 30)
+        print("⚠️  This will delete ALL chunks and documents!")
+        print("   You'll need to reprocess all documents after reset.")
+        print("=" * 30)
+        
         confirm = input("Are you sure you want to delete all data? (yes/no): ")
         if confirm.lower() != 'yes':
-            print("Operation cancelled.")
+            print("❌ Operation cancelled.")
             return 0
         
+        print("🗑️  Deleting collection...")
         embedding_manager.delete_collection()
-        print("Vector database reset successfully")
+        print("✅ Vector database reset successfully!")
+        print("💡 Run 'python scripts/rag_cli.py process' to reprocess documents")
         
         return 0
         
     except Exception as e:
         logger.error(f"Reset failed: {e}")
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         return 1
 
 def main():
     parser = argparse.ArgumentParser(
-        description="RAG System CLI - Process documents and query knowledge base",
+        description="🤖 RAG System CLI with LangChain Chunking - Process documents and query knowledge base",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -124,8 +172,11 @@ Examples:
   python scripts/rag_cli.py process --recreate         # Recreate vector database
   python scripts/rag_cli.py query                      # Interactive query mode
   python scripts/rag_cli.py query -q "What is RAG?"    # Single query
-  python scripts/rag_cli.py stats                      # Show statistics
+  python scripts/rag_cli.py stats                      # Show statistics with chunking info
   python scripts/rag_cli.py reset                      # Reset vector database
+
+Supported Formats: PDF, TXT, PNG, JPG, XML, DOCX, MD
+Chunking: LangChain RecursiveCharacterTextSplitter
         """
     )
     

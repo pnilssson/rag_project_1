@@ -1,6 +1,6 @@
-# RAG System with LM Studio + Qdrant
+# RAG System with LM Studio + Qdrant + LangChain
 
-A simple RAG system using local LLMs via LM Studio and Qdrant vector database.
+A sophisticated RAG system using local LLMs via LM Studio, Qdrant vector database, and LangChain for intelligent document processing.
 
 ## Quick Start
 
@@ -39,7 +39,12 @@ python scripts/rag_cli.py query
 
 ## Supported Files
 
-- PDF, TXT, PNG, JPG, XML, DOCX
+- **PDF**: Intelligent text extraction with PyMuPDF
+- **TXT/MD**: Text and Markdown files with semantic chunking
+- **PNG/JPG**: OCR processing with Tesseract
+- **XML**: Structured document parsing
+- **DOCX**: Word document processing
+- **HTML**: Web content with header-aware chunking
 
 ## Configuration
 

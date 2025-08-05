@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 from extract import extract_text
-from chunk import chunk_text
+from chunk import LangChainChunker
 from embeddings import embedding_manager
 from config import config
 from utils import setup_logging, is_supported_file, measure_time
@@ -16,6 +16,9 @@ class RAGPipeline:
         self.data_dir = config.data_dir
         self.processed_files = []
         self.failed_files = []
+        
+        # Initialize LangChain chunker
+        self.chunker = LangChainChunker()
         
         # Initialize collection when pipeline is created
         logger.info("Initializing vector database collection...")
@@ -36,14 +39,27 @@ class RAGPipeline:
                 logger.warning(f"No text extracted from {file_path}")
                 return {"status": "no_text", "file": source_name}
             
-            # Chunk text
-            chunks = chunk_text(text)
+            # Use LangChain chunking with recursive character splitting
+            try:
+                # Try direct file chunking first (LangChain can handle many formats directly)
+                chunks = self.chunker.chunk_file(file_path, source_name=source_name)
+                if not chunks:
+                    # Fallback to text chunking if file chunking fails
+                    chunks = self.chunker.chunk_text(text, source_name=source_name)
+            except Exception as chunk_error:
+                logger.warning(f"File chunking failed, falling back to text chunking: {chunk_error}")
+                chunks = self.chunker.chunk_text(text, source_name=source_name)
+            
             if not chunks:
                 logger.warning(f"No chunks created from {file_path}")
                 return {"status": "no_chunks", "file": source_name}
             
-            # Insert chunks
-            embedding_manager.insert_chunks(chunks, source_name)
+            # Extract text content and metadata for embedding
+            chunk_texts = [chunk.page_content for chunk in chunks]
+            chunk_metadata = [chunk.metadata for chunk in chunks]
+            
+            # Insert chunks with enhanced metadata
+            embedding_manager.insert_chunks(chunk_texts, source_name, chunk_metadata)
             
             result = {
                 "status": "success",

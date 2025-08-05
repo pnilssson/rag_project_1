@@ -34,7 +34,7 @@ class Config:
     
     # Language settings
     ocr_languages: str = "eng+swe"  # Tesseract OCR languages
-    system_language: str = "sv"     # System language (sv, en, etc.)
+    system_language: str = "eng"     # System language (sv, en, etc.)
     fallback_language: str = "eng"  # Fallback language for OCR
     
     # File processing

@@ -41,7 +41,7 @@ class EmbeddingManager:
             raise
     
     @measure_time
-    def insert_chunks(self, chunks: List[str], source_file: str, metadata: Dict[str, Any] = None):
+    def insert_chunks(self, chunks: List[str], source_file: str, chunk_metadata: List[Dict[str, Any]] = None):
         """Insert chunks with improved batch processing and error handling"""
         if not chunks:
             logger.warning("No chunks to insert")
@@ -59,13 +59,12 @@ class EmbeddingManager:
             for i, (chunk, vector) in enumerate(zip(chunks, all_vectors)):
                 point_metadata = {
                     "text": chunk,
-                    "source": source_file,
-                    "chunk_index": i,
-                    "chunk_length": len(chunk.split())
+                    "source": source_file
                 }
                 
-                if metadata:
-                    point_metadata.update(metadata)
+                # Add LangChain metadata if available
+                if chunk_metadata and i < len(chunk_metadata):
+                    point_metadata.update(chunk_metadata[i])
                 
                 points.append(PointStruct(
                     id=str(uuid.uuid4()),

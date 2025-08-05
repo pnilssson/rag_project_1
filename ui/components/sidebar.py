@@ -27,15 +27,6 @@ def create_sidebar():
     st.sidebar.markdown("---")
     st.sidebar.subheader("System Status")
     
-    # Check Qdrant connection
-    try:
-        from scripts.embeddings import embedding_manager
-        stats = embedding_manager.get_collection_info()
-        st.sidebar.success("✅ Qdrant Connected")
-        st.sidebar.info(f"Chunks: {stats['points_count']}")
-    except Exception as e:
-        st.sidebar.error("❌ Qdrant Disconnected")
-    
     # Check LM Studio connection
     try:
         from scripts.query import RAGQueryEngine
@@ -45,5 +36,14 @@ def create_sidebar():
         st.sidebar.success("✅ LM Studio Connected")
     except Exception as e:
         st.sidebar.error("❌ LM Studio Disconnected")
+
+    # Check Qdrant connection
+    try:
+        from scripts.embeddings import embedding_manager
+        stats = embedding_manager.get_collection_info()
+        st.sidebar.success("✅ Qdrant Connected")
+        st.sidebar.info(f"Chunks: {stats['points_count']}")
+    except Exception as e:
+        st.sidebar.error("❌ Qdrant Disconnected")
     
     return page 
