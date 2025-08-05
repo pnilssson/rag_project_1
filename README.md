@@ -14,6 +14,8 @@ pip install -r requirements.txt
 docker compose up -d
 ```
 
+Access Qdrant dashboard at: http://localhost:6333/dashboard
+
 3. **Start LM Studio:**
    - Load your model (e.g., Qwen 3 8B)
    - Enable API server (Settings → API Server)
