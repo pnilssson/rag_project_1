@@ -59,16 +59,18 @@ def upload_and_process_page():
                         status_text = st.empty()
                         
                         results = []
-                        for i, temp_file in enumerate(temp_files):
-                            status_text.text(f"Processing {os.path.basename(temp_file.name)}...")
+                        for i, file_info in enumerate(temp_files):
+                            original_name = file_info['original_name']
+                            file_path = file_info['file_path']
+                            status_text.text(f"Processing {original_name}...")
                             
                             try:
-                                result = pipeline.process_file(temp_file.name)
+                                result = pipeline.process_file(file_path, source_name=original_name)
                                 results.append(result)
                             except Exception as e:
                                 results.append({
                                     "status": "error",
-                                    "file": temp_file.name,
+                                    "file": original_name,
                                     "error": str(e)
                                 })
                             

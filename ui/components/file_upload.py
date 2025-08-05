@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import List
 
-def handle_file_upload() -> List[tempfile.NamedTemporaryFile]:
-    """Handle file upload and return temporary files"""
+def handle_file_upload() -> List[dict]:
+    """Handle file upload and return temporary files with original names"""
     uploaded_files = st.file_uploader(
         "Upload documents",
         type=['pdf', 'txt', 'png', 'jpg', 'jpeg', 'xml', 'docx'],
@@ -17,24 +17,31 @@ def handle_file_upload() -> List[tempfile.NamedTemporaryFile]:
     if uploaded_files:
         st.info(f"📁 {len(uploaded_files)} files selected")
         
-        # Create temporary files
+        # Create temporary files with original names preserved
         for uploaded_file in uploaded_files:
+            # Create temp file with original extension
             temp_file = tempfile.NamedTemporaryFile(
                 delete=False,
                 suffix=Path(uploaded_file.name).suffix
             )
             temp_file.write(uploaded_file.getvalue())
             temp_file.close()
-            temp_files.append(temp_file)
+            
+            # Store both temp file and original name
+            temp_files.append({
+                'temp_file': temp_file,
+                'original_name': uploaded_file.name,
+                'file_path': temp_file.name
+            })
     
     return temp_files
 
-def cleanup_temp_files(temp_files: List[tempfile.NamedTemporaryFile]):
+def cleanup_temp_files(temp_files: List[dict]):
     """Clean up temporary files"""
     import logging
     
-    for temp_file in temp_files:
+    for file_info in temp_files:
         try:
-            os.unlink(temp_file.name)
+            os.unlink(file_info['file_path'])
         except Exception as e:
-            logging.warning(f"Failed to delete temp file {temp_file.name}: {e}") 
+            logging.warning(f"Failed to delete temp file {file_info['file_path']}: {e}") 

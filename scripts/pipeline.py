@@ -21,46 +21,50 @@ class RAGPipeline:
         logger.info("Initializing vector database collection...")
         embedding_manager.init_collection()
     
-    def process_file(self, file_path: str) -> Dict[str, Any]:
+    def process_file(self, file_path: str, source_name: str = None) -> Dict[str, Any]:
         """Process a single file through the RAG pipeline"""
         try:
             logger.info(f"Processing file: {file_path}")
+            
+            # Use provided source name or fall back to filename
+            if source_name is None:
+                source_name = os.path.basename(file_path)
             
             # Extract text
             text = extract_text(file_path)
             if not text.strip():
                 logger.warning(f"No text extracted from {file_path}")
-                return {"status": "no_text", "file": file_path}
+                return {"status": "no_text", "file": source_name}
             
             # Chunk text
             chunks = chunk_text(text)
             if not chunks:
                 logger.warning(f"No chunks created from {file_path}")
-                return {"status": "no_chunks", "file": file_path}
+                return {"status": "no_chunks", "file": source_name}
             
             # Insert chunks
-            embedding_manager.insert_chunks(chunks, os.path.basename(file_path))
+            embedding_manager.insert_chunks(chunks, source_name)
             
             result = {
                 "status": "success",
-                "file": file_path,
+                "file": source_name,
                 "text_length": len(text),
                 "chunks_count": len(chunks),
                 "file_size": os.path.getsize(file_path)
             }
             
             self.processed_files.append(result)
-            logger.info(f"Successfully processed: {os.path.basename(file_path)}")
+            logger.info(f"Successfully processed: {source_name}")
             return result
             
         except Exception as e:
             error_result = {
                 "status": "error",
-                "file": file_path,
+                "file": source_name,
                 "error": str(e)
             }
             self.failed_files.append(error_result)
-            logger.error(f"Error processing {file_path}: {e}")
+            logger.error(f"Error processing {source_name}: {e}")
             return error_result
     
     @measure_time
